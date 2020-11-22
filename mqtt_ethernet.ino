@@ -134,12 +134,13 @@ int lerLdr()
 void enviarDados()
 {
   char msg[256];
-  int luz = lerLdr();
+  
   JSONencoder["umi"] = dht.readHumidity();
   JSONencoder["temp"] = dht.readTemperature();;
   JSONencoder["luz"] = lerLdr();
   JSONencoder["umi_s"] = 40.5; //Alterar pela funcao do leitor de umidade de solo
   
+  //Print para debug
   char JSONmessageBuffer[100];
   JSONencoder.printTo(JSONmessageBuffer, sizeof(JSONmessageBuffer));
   Serial.println(JSONmessageBuffer);
