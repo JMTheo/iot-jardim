@@ -14,12 +14,12 @@ const char *TOPICO = "iot/casa";
 #define DHTTYPE DHT11
 
 //Definindo as portas.
-const int LED = 8;     //Vai ser o RELE
+const int DHTPIN = 7;  //Sensor de temperatura/umidade ar
+const int LAMPADA = 8; //LAMPADA NO RELE    
 const int VALVULA = 9; //Válvula solenoide no RELE
-const int DHTPIN = 7;        //Sensor de temperatura/umidade ar
 
 //Analógicos
-const int HIG = A3;           //Sensor de umidade de solo
+const int SOLO = A3;           //Sensor de umidade de solo
 const int LDR = A4;           //Sensor de luz
 
 //Variavéis auxliares.
@@ -41,7 +41,9 @@ void setup()
   Serial.begin(9600);
 
   //Definindo as gpio
-  pinMode(LED, OUTPUT);
+  pinMode(LAMPADA, OUTPUT);
+  pinMode(VALVULA, OUTPUT);
+  pinMode(SOLO, INPUT);
   pinMode(LDR, INPUT);
   
 
@@ -65,7 +67,7 @@ void loop()
   }
   client.loop();
   unsigned long now = millis();
-  if (now - lastMsg > 5000) {
+  if (now - lastMsg > 10000) {
     lastMsg = now;
     enviarDados();
     
@@ -84,13 +86,13 @@ void callback(char *topic, byte *payload, unsigned int length)
   Serial.print(topic);
   Serial.print(" | ");
   Serial.println(mensagem);
-  if (mensagem == "ligarLampadaSala")
+  if (mensagem == "lj")
   {
-    digitalWrite(LED, HIGH);
+    digitalWrite(LAMPADA, HIGH);
   }
-  else if (mensagem == "desligarLampadaSala")
+  else if (mensagem == "dj")
   {
-    digitalWrite(LED, LOW);
+    digitalWrite(LAMPADA, LOW);
   }
   limpaMSG();
   Serial.println();
@@ -120,6 +122,13 @@ void reconnect()
     }
   }
 }
+//Função para ler o sensor de umidade de solo
+int lerSolo()
+{
+  int vlr = analogRead(SOLO);
+  vlr = map(vlr, 0, 1023, 100, 0);
+  return vlr;
+}
 
 int lerLdr()
 {
@@ -131,14 +140,27 @@ int lerLdr()
   return luz;
 }
 
+//A cada determinado valor de tempo, checa a umidade do solo e se estiver
+//abaixo de 60% ou 40% aciona a agua durante 1 segundo.
+//Vale ressaltar que a válvula solenoide está como normalmente fechada
+//Logo ao mandar um sinal low ela abre o circuito para que passe a energia
+void acionarAgua(int vlr){
+  if(vlr <= 40 || vlr <=60) {
+    digitalWrite(VALVULA, LOW);
+    delay(1000);
+    digitalWrite(VALVULA, HIGH);
+  }
+}
+
 void enviarDados()
 {
   char msg[256];
+  int umidade = lerSolo();
   
   JSONencoder["umi"] = dht.readHumidity();
   JSONencoder["temp"] = dht.readTemperature();;
   JSONencoder["luz"] = lerLdr();
-  JSONencoder["umi_s"] = 40.5; //Alterar pela funcao do leitor de umidade de solo
+  JSONencoder["umi_s"] = umidade;
   
   //Print para debug
   char JSONmessageBuffer[100];
@@ -150,6 +172,7 @@ void enviarDados()
   } else {
       Serial.println("Erro ao enviar dados");
   }
+  acionarAgua(umidade);
 }
 
 void limpaMSG()
