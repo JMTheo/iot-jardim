@@ -26,7 +26,9 @@ const int LDR = A4;           //Sensor de luz
 String mensagem;
 char leitura;
 unsigned long lastMsg = 0;
-const long INTERVALO = 5000; // 1 hora em milisegundos (3600000)
+
+StaticJsonBuffer<256> JSONbuffer;
+JsonObject& JSONencoder = JSONbuffer.createObject();
 
 //Definindo o cliente client e o ethernet
 DHT dht(DHTPIN, DHTTYPE);
@@ -65,8 +67,8 @@ void loop()
   unsigned long now = millis();
   if (now - lastMsg > 5000) {
     lastMsg = now;
-    lerDHT();
-    lerLdr();
+    enviarDados();
+    
   }
 }
 
@@ -119,33 +121,34 @@ void reconnect()
   }
 }
 
-void lerLdr()
+int lerLdr()
 {
-  char msg[50];
   //Lendo o valor do sensor de luz
   int luz = analogRead(LDR);
   //Definindo o minimo de luz e o máximo
   //variavel a ser mapeada| minimo | max | min % | max %
   luz = map(luz, 0, 900, 100, 0); // Escuro tende a 0
-  snprintf(msg, 50, "LUZ: %i", luz);
-  client.publish("iot/casa", "luz: " + String(luz).c_str());
+  return luz;
 }
 
-void lerDHT()
+void enviarDados()
 {
-  char msg[100];
+  char msg[256];
+  int luz = lerLdr();
+  JSONencoder["umi"] = dht.readHumidity();
+  JSONencoder["temp"] = dht.readTemperature();;
+  JSONencoder["luz"] = lerLdr();
+  JSONencoder["umi_s"] = 40.5; //Alterar pela funcao do leitor de umidade de solo
   
-  float h = dht.readHumidity();
-  float t = dht.readTemperature();
-  /* Serial.print("H: ");
-  Serial.println(h);
-  Serial.print("t: ");
-  Serial.println(t); */
-  String umi = "umi: " + String(h).c_str();
-  String temp = "temp: " + String(t).c_str();
-  client.publish("iot/casa", umi);
-  client.publish("iot/casa", temp);
-  //Serial.write(msg);
+  char JSONmessageBuffer[100];
+  JSONencoder.printTo(JSONmessageBuffer, sizeof(JSONmessageBuffer));
+  Serial.println(JSONmessageBuffer);
+ 
+  if (client.publish("iot/casa", JSONmessageBuffer) == true) {
+      Serial.println("Sucesso ao enviar dados");
+  } else {
+      Serial.println("Erro ao enviar dados");
+  }
 }
 
 void limpaMSG()
