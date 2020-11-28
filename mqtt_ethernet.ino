@@ -15,12 +15,12 @@ const char *TOPICO = "iot/casa";
 
 //Definindo as portas.
 const int DHTPIN = 7;  //Sensor de temperatura/umidade ar
-const int LAMPADA = 8; //LAMPADA NO RELE    
+const int LAMPADA = 8; //LAMPADA NO RELE
 const int VALVULA = 9; //Válvula solenoide no RELE
 
 //Analógicos
-const int SOLO = A3;           //Sensor de umidade de solo
-const int LDR = A4;           //Sensor de luz
+const int SOLO = A3; //Sensor de umidade de solo
+const int LDR = A4;  //Sensor de luz
 
 //Variavéis auxliares.
 String mensagem;
@@ -28,7 +28,7 @@ char leitura;
 unsigned long lastMsg = 0;
 
 StaticJsonBuffer<256> JSONbuffer;
-JsonObject& JSONencoder = JSONbuffer.createObject();
+JsonObject &JSONencoder = JSONbuffer.createObject();
 
 //Definindo o cliente client e o ethernet
 DHT dht(DHTPIN, DHTTYPE);
@@ -45,7 +45,6 @@ void setup()
   pinMode(VALVULA, OUTPUT);
   pinMode(SOLO, INPUT);
   pinMode(LDR, INPUT);
-  
 
   //Iniciando o DHT11
   dht.begin();
@@ -67,10 +66,10 @@ void loop()
   }
   client.loop();
   unsigned long now = millis();
-  if (now - lastMsg > 10000) {
+  if (now - lastMsg > 10000)
+  {
     lastMsg = now;
     enviarDados();
-    
   }
 }
 
@@ -93,6 +92,10 @@ void callback(char *topic, byte *payload, unsigned int length)
   else if (mensagem == "dj")
   {
     digitalWrite(LAMPADA, LOW);
+  }
+  else if (mensagem == "a")
+  {
+    acionarAgua(60);
   }
   limpaMSG();
   Serial.println();
@@ -117,7 +120,7 @@ void reconnect()
       Serial.print("erro, rc=");
       Serial.print(client.state());
       Serial.println("tentando conexão em 5 segundos...");
-      // Wait 5 seconds before retrying
+      // Esperar 5s para reconectar
       delay(5000);
     }
   }
@@ -126,7 +129,7 @@ void reconnect()
 int lerSolo()
 {
   int vlr = analogRead(SOLO);
-  vlr = map(vlr, 0, 1023, 100, 0);
+  vlr = map(vlr, 100, 1023, 100, 0);
   return vlr;
 }
 
@@ -144,10 +147,18 @@ int lerLdr()
 //abaixo de 60% ou 40% aciona a agua durante 1 segundo.
 //Vale ressaltar que a válvula solenoide está como normalmente fechada
 //Logo ao mandar um sinal low ela abre o circuito para que passe a energia
-void acionarAgua(int vlr){
-  if(vlr <= 40 || vlr <=60) {
+void acionarAgua(int vlr)
+{
+  if (vlr <= 60)
+  {
     digitalWrite(VALVULA, LOW);
     delay(1000);
+    digitalWrite(VALVULA, HIGH);
+  }
+  else if (vlr <= 40)
+  {
+    digitalWrite(VALVULA, LOW);
+    delay(2000);
     digitalWrite(VALVULA, HIGH);
   }
 }
@@ -156,21 +167,25 @@ void enviarDados()
 {
   char msg[256];
   int umidade = lerSolo();
-  
+
   JSONencoder["umi"] = dht.readHumidity();
-  JSONencoder["temp"] = dht.readTemperature();;
+  JSONencoder["temp"] = dht.readTemperature();
+  ;
   JSONencoder["luz"] = lerLdr();
   JSONencoder["umi_s"] = umidade;
-  
+
   //Print para debug
   char JSONmessageBuffer[100];
   JSONencoder.printTo(JSONmessageBuffer, sizeof(JSONmessageBuffer));
   Serial.println(JSONmessageBuffer);
- 
-  if (client.publish("iot/casa", JSONmessageBuffer) == true) {
-      Serial.println("Sucesso ao enviar dados");
-  } else {
-      Serial.println("Erro ao enviar dados");
+
+  if (client.publish("iot/casa", JSONmessageBuffer) == true)
+  {
+    Serial.println("Sucesso ao enviar dados");
+  }
+  else
+  {
+    Serial.println("Erro ao enviar dados");
   }
   acionarAgua(umidade);
 }
