@@ -14,6 +14,8 @@ const char *TOPICO = "iot/casa";
 #define DHTTYPE DHT11
 
 //Definindo as portas.
+const int LED_G = 5;
+const int LED_V = 6;
 const int DHTPIN = 7;  //Sensor de temperatura/umidade ar
 const int LAMPADA = 8; //LAMPADA NO RELE
 const int VALVULA = 9; //Válvula solenoide no RELE
@@ -43,9 +45,14 @@ void setup()
   //Definindo as gpio
   pinMode(LAMPADA, OUTPUT);
   pinMode(VALVULA, OUTPUT);
+  pinMode(LED_V, OUTPUT);
+  pinMode(LED_G, OUTPUT);
+
   pinMode(SOLO, INPUT);
   pinMode(LDR, INPUT);
 
+  digitalWrite(LED_V, LOW);
+  digitalWrite(LED_G, LOW);
   //Iniciando o DHT11
   dht.begin();
 
@@ -168,9 +175,10 @@ void enviarDados()
   char msg[256];
   int umidade = lerSolo();
 
+  mudarLeds(umidade);
+  
   JSONencoder["umi"] = dht.readHumidity();
   JSONencoder["temp"] = dht.readTemperature();
-  ;
   JSONencoder["luz"] = lerLdr();
   JSONencoder["umi_s"] = umidade;
 
@@ -187,7 +195,24 @@ void enviarDados()
   {
     Serial.println("Erro ao enviar dados");
   }
-  acionarAgua(umidade);
+  //Desativado devido a válvula ter queimado
+  //acionarAgua(umidade);
+}
+
+void mudarLeds(int vlr){
+  if(vlr <= 50)
+  {
+    digitalWrite(LED_G, LOW);
+    for(int i = 0; i < 5; i++) 
+    {
+      digitalWrite(LED_V, HIGH);
+      delay(100);
+      digitalWrite(LED_V, LOW);
+      delay(100);
+    }
+  } else {
+    digitalWrite(LED_G, HIGH);
+  }
 }
 
 void limpaMSG()
