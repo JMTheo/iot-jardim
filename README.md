@@ -11,9 +11,3 @@ TO DO:
 
 Apenas fazer o upload do arquivo para o arduino
 
-
-## Membros do grupo
-- João Matheus
-- José Augusto
-- Patrick Wesley
-- Wesley Vitorio
